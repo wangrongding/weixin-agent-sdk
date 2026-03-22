@@ -4,6 +4,7 @@ import { Readable, Writable } from "node:stream";
 import {
   ClientSideConnection,
   ndJsonStream,
+  PROTOCOL_VERSION,
 } from "@agentclientprotocol/sdk";
 import type { SessionId } from "@agentclientprotocol/sdk";
 
@@ -74,7 +75,7 @@ export class AcpConnection {
     }), stream);
 
     await conn.initialize({
-      protocolVersion: "0.16.1",
+      protocolVersion: PROTOCOL_VERSION,
       clientInfo: { name: "weixin-agent-sdk", version: "0.1.0" },
       clientCapabilities: {},
     });

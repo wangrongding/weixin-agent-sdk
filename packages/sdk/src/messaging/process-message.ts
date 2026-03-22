@@ -218,11 +218,11 @@ export async function processOneMessage(
       });
     }
   } catch (err) {
-    logger.error(`processOneMessage: agent or send failed: ${String(err)}`);
+    logger.error(`processOneMessage: agent or send failed: ${err instanceof Error ? err.stack ?? err.message : JSON.stringify(err)}`);
     void sendWeixinErrorNotice({
       to,
       contextToken,
-      message: `⚠️ 处理消息失败：${err instanceof Error ? err.message : String(err)}`,
+      message: `⚠️ 处理消息失败：${err instanceof Error ? err.message : JSON.stringify(err)}`,
       baseUrl: deps.baseUrl,
       token: deps.token,
       errLog: deps.errLog,

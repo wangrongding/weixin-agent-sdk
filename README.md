@@ -25,7 +25,7 @@ npx tsx main.ts login
 
 # 启动（-- 后面跟 ACP agent 的启动命令）
 npx tsx main.ts start -- codex-acp
-npx tsx main.ts start -- kimi
+npx tsx main.ts start -- kimi acp
 ```
 
 `--` 后面的部分就是你的 ACP agent 启动命令，适配器会自动以子进程方式启动它，通过 JSON-RPC over stdio 进行通信。
