@@ -59,12 +59,17 @@ export function listIndexedWeixinAccountIds(): string[] {
   }
 }
 
-/** Register accountId as the sole account in the persistent index. */
+/** Register accountId in the persistent index without duplicating existing entries. */
 export function registerWeixinAccountId(accountId: string): void {
   const dir = resolveWeixinStateDir();
   fs.mkdirSync(dir, { recursive: true });
 
-  fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify([accountId], null, 2), "utf-8");
+  const normalizedId = normalizeAccountId(accountId);
+  const merged = [...listIndexedWeixinAccountIds(), normalizedId].filter(
+    (id, index, list) => list.indexOf(id) === index,
+  );
+
+  fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(merged, null, 2), "utf-8");
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +91,19 @@ function resolveAccountsDir(): string {
 
 function resolveAccountPath(accountId: string): string {
   return path.join(resolveAccountsDir(), `${accountId}.json`);
+}
+
+function listAccountIdsFromFiles(): string[] {
+  try {
+    if (!fs.existsSync(resolveAccountsDir())) return [];
+    return fs
+      .readdirSync(resolveAccountsDir(), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry) => normalizeAccountId(entry.name.slice(0, -".json".length)))
+      .filter((id, index, list) => Boolean(id) && list.indexOf(id) === index);
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -254,7 +272,9 @@ export type ResolvedWeixinAccount = {
 
 /** List accountIds from the index file (written at QR login). */
 export function listWeixinAccountIds(): string[] {
-  return listIndexedWeixinAccountIds();
+  return [...listIndexedWeixinAccountIds(), ...listAccountIdsFromFiles()].filter(
+    (id, index, list) => list.indexOf(id) === index,
+  );
 }
 
 /** Resolve a weixin account by ID, reading stored credentials. */

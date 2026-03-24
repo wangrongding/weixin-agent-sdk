@@ -4,12 +4,13 @@
  * WeChat + ACP (Agent Client Protocol) adapter.
  *
  * Usage:
- *   npx weixin-acp login                          # QR-code login
+ *   npx weixin-acp login [--force]                # Login (reuses local credentials by default)
  *   npx weixin-acp claude-code                     # Start with Claude Code
  *   npx weixin-acp codex                           # Start with Codex
  *   npx weixin-acp start -- <command> [args...]    # Start with custom agent
  *
  * Examples:
+ *   npx weixin-acp login --force
  *   npx weixin-acp start -- node ./my-agent.js
  */
 
@@ -24,6 +25,7 @@ const BUILTIN_AGENTS: Record<string, { command: string }> = {
 };
 
 const command = process.argv[2];
+const forceLogin = process.argv.includes("--force");
 
 async function ensureLoggedIn() {
   if (!isLoggedIn()) {
@@ -53,7 +55,7 @@ async function startAgent(acpCommand: string, acpArgs: string[] = []) {
 
 async function main() {
   if (command === "login") {
-    await login();
+    await login({ force: forceLogin });
     return;
   }
 
@@ -84,13 +86,14 @@ async function main() {
   console.log(`weixin-acp — 微信 + ACP 适配器
 
 用法:
-  npx weixin-acp login                          扫码登录微信
+npx weixin-acp login [--force]                登录微信（默认复用本地凭证）
   npx weixin-acp logout                         退出登录
   npx weixin-acp claude-code                     使用 Claude Code
   npx weixin-acp codex                           使用 Codex
   npx weixin-acp start -- <command> [args...]    使用自定义 agent
 
 示例:
+  npx weixin-acp login --force
   npx weixin-acp start -- node ./my-agent.js`);
 }
 

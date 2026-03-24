@@ -47,7 +47,7 @@ npx weixin-acp start -- kimi acp
 SDK 只导出三样东西：
 
 - **`Agent`** 接口 —— 实现它就能接入微信
-- **`login()`** —— 扫码登录
+- **`login()`** —— 登录微信（默认复用本地凭证，必要时再扫码）
 - **`start(agent)`** —— 启动消息循环
 
 ### Agent 接口
@@ -125,12 +125,14 @@ await start(myAgent);
 ```bash
 pnpm install
 
-# 扫码登录微信
+# 首次扫码登录微信
 pnpm run login -w packages/example-openai
 
 # 启动 bot
 OPENAI_API_KEY=sk-xxx pnpm run start -w packages/example-openai
 ```
+
+`login()` 会把登录凭证保存到本地；下次调用时若检测到可用凭证，会直接复用，不会重复要求扫码。只有显式传入 `login({ force: true })` 时才会重新发起扫码。
 
 支持的环境变量：
 
@@ -177,7 +179,9 @@ OPENAI_API_KEY=sk-xxx pnpm run start -w packages/example-openai
 
 - 使用 **长轮询** (`getUpdates`) 接收消息，无需公网服务器
 - 媒体文件通过微信 CDN 中转，**AES-128-ECB** 加密传输
-- 单账号模式：每次 `login` 覆盖之前的账号
+- 登录态持久化到 `~/.openclaw/openclaw-weixin/`
+- `login()` 默认复用已有账号；显式 `force` 时才重新扫码
+- 多次扫码会追加账号条目，可在 `start({ accountId })` 中指定使用哪个账号
 - 断点续传：`get_updates_buf` 持久化到 `~/.openclaw/`，重启后从上次位置继续
 - 会话过期自动重连（errcode -14 触发 1 小时冷却后恢复）
 - Node.js >= 22

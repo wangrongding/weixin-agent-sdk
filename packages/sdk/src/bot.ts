@@ -18,14 +18,18 @@ import { monitorWeixinProvider } from "./monitor/monitor.js";
 import { logger } from "./util/logger.js";
 
 export type LoginOptions = {
+  /** Existing account ID to reuse or replace. */
+  accountId?: string;
   /** Override the API base URL. */
   baseUrl?: string;
+  /** Force a fresh QR-code login even if a local credential already exists. */
+  force?: boolean;
   /** Log callback (defaults to console.log). */
   log?: (msg: string) => void;
 };
 
 export type StartOptions = {
-  /** Account ID to use. Auto-selects the first registered account if omitted. */
+  /** Account ID to use. Auto-selects the first configured account if omitted. */
   accountId?: string;
   /** AbortSignal to stop the bot. */
   abortSignal?: AbortSignal;
@@ -33,21 +37,44 @@ export type StartOptions = {
   log?: (msg: string) => void;
 };
 
+function findConfiguredAccountId(accountId?: string): string | undefined {
+  if (accountId?.trim()) {
+    const normalizedId = normalizeAccountId(accountId);
+    return resolveWeixinAccount(normalizedId).configured ? normalizedId : undefined;
+  }
+
+  for (const id of listWeixinAccountIds()) {
+    if (resolveWeixinAccount(id).configured) {
+      return id;
+    }
+  }
+
+  return undefined;
+}
+
 /**
- * Interactive QR-code login. Prints the QR code to the terminal and waits
- * for the user to scan it with WeChat.
+ * Login to WeChat. Reuses an existing local credential by default; when
+ * `force` is set, prints a QR code and waits for the user to scan it.
  *
  * Returns the normalized account ID on success.
  */
 export async function login(opts?: LoginOptions): Promise<string> {
   const log = opts?.log ?? console.log;
   const apiBaseUrl = opts?.baseUrl ?? DEFAULT_BASE_URL;
+  const existingAccountId = !opts?.force ? findConfiguredAccountId(opts?.accountId) : undefined;
+
+  if (existingAccountId) {
+    log(`[weixin] 检测到已登录账号，直接复用本地凭证: ${existingAccountId}`);
+    return existingAccountId;
+  }
 
   log("正在启动微信扫码登录...");
 
   const startResult = await startWeixinLoginWithQr({
+    accountId: opts?.accountId ? normalizeAccountId(opts.accountId) : undefined,
     apiBaseUrl,
     botType: DEFAULT_ILINK_BOT_TYPE,
+    force: opts?.force,
   });
 
   if (!startResult.qrcodeUrl) {
@@ -126,12 +153,12 @@ export async function start(agent: Agent, opts?: StartOptions): Promise<void> {
   // Resolve account
   let accountId = opts?.accountId;
   if (!accountId) {
-    const ids = listWeixinAccountIds();
-    if (ids.length === 0) {
+    const configuredIds = listWeixinAccountIds().filter((id) => resolveWeixinAccount(id).configured);
+    if (configuredIds.length === 0) {
       throw new Error("没有已登录的账号，请先运行 login");
     }
-    accountId = ids[0];
-    if (ids.length > 1) {
+    accountId = configuredIds[0];
+    if (configuredIds.length > 1) {
       log(`[weixin] 检测到多个账号，使用第一个: ${accountId}`);
     }
   }
